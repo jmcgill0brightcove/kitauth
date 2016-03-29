@@ -5,7 +5,7 @@ type Principal interface {
 }
 
 type Subject interface {
-	SubjectToken() interface{}
+	SubjectTokens() []interface{}
 }
 
 type AuthNFunc func(p Principal) bool
