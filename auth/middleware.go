@@ -5,6 +5,11 @@ import (
 	"golang.org/x/net/context"
 )
 
+type Authenticator interface {
+	Authenticated() endpoint.Middleware
+	Authorized() endpoint.Middleware
+}
+
 type authenticator struct {
 	authN AuthNFunc
 	authZ AuthZFunc
@@ -31,6 +36,28 @@ func (a *authenticator) Authenticated() endpoint.Middleware {
 			}
 			return func(ctx context.Context, i interface{}) (interface{}, error) {
 				return nil, &UnknownPrincipal{}
+			}(ctx, i)
+		}
+	}
+}
+
+func (a *authenticator) Authorized() endpoint.Middleware {
+	return func(next endpoint.Endpoint) endpoint.Endpoint {
+		return func(ctx context.Context, i interface{}) (interface{}, error) {
+			var ok bool
+			var s Subject
+
+			if s, ok = i.(Subject); ok {
+				if s == nil {
+					return nil, &UnknownSubject{}
+				}
+				if a.authZ(s) {
+					return next(ctx, i)
+				}
+				return nil, &Unauthorized{}
+			}
+			return func(ctx context.Context, i interface{}) (interface{}, error) {
+				return nil, &UnknownSubject{}
 			}(ctx, i)
 		}
 	}

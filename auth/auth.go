@@ -5,9 +5,10 @@ type Principal interface {
 }
 
 type Subject interface {
+	PrincipalToken() interface{}
 	SubjectTokens() []interface{}
 }
 
 type AuthNFunc func(p Principal) bool
 
-type AuthZFunc func(p Principal, s []Subject) bool
+type AuthZFunc func(s Subject) bool

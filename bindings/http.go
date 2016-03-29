@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
+
+	"math/big"
 
 	"golang.org/x/net/context"
 
@@ -32,6 +35,7 @@ type Response struct {
 	Status string
 }
 
+// Example of using a gorilla-mux path variable as an auth.Principal
 func (r *Request) PrincipalToken() interface{} {
 	if id, ok := r.params[consts.RequestPrincipalID]; ok {
 		return &id
@@ -39,6 +43,16 @@ func (r *Request) PrincipalToken() interface{} {
 	return nil
 }
 
+// Example of using HTTP Request Method as an auth.Subject
+func (r *Request) SubjectTokens() []interface{} {
+	if method, ok := r.params["HTTP_REQUEST_METHOD"]; ok {
+		return []interface{}{&method}
+	}
+	return []interface{}{}
+}
+
+// Put a gorilla-mux path var into Go-Kit's Request scope for use an auth.Principal
+// Put the HTTP Request Method into Go-Kit's Request scope for use as an auth.Subject
 func decodeRequest(r *http.Request) (response interface{}, err error) {
 	var (
 		id string
@@ -49,7 +63,7 @@ func decodeRequest(r *http.Request) (response interface{}, err error) {
 	if id, ok = urlParams[consts.RequestPrincipalID]; !ok {
 		return nil, errors.New("No principal id in request")
 	}
-	return &Request{map[string]string{consts.RequestPrincipalID: id}}, nil
+	return &Request{map[string]string{consts.RequestPrincipalID: id, "HTTP_REQUEST_METHOD": r.Method}}, nil
 }
 
 func encodeResponse(w http.ResponseWriter, i interface{}) error {
@@ -83,6 +97,7 @@ func StartHTTPListener(root context.Context) {
 func createRouter(ctx context.Context, endpoint Servicer) *mux.Router {
 	router := mux.NewRouter()
 
+	// An example authn function that requires an auth.Principal token to (probably be a prime number
 	authn := func(p auth.Principal) bool {
 		if p == nil {
 			return false
@@ -92,27 +107,56 @@ func createRouter(ctx context.Context, endpoint Servicer) *mux.Router {
 		}
 		if token, ok := p.PrincipalToken().(*string); ok {
 			log.Debug(ctx, consts.RequestPrincipalID, token)
-			if *token == "1" {
+			i, err := strconv.ParseInt(*token, 10, 64)
+			if err != nil {
+				log.Error(ctx, "principal", *token, "err", err.Error())
+				return false
+			}
+			if big.NewInt(i).ProbablyPrime(20) {
+				log.Error(ctx, "principal", *token, "probably_prime", true)
 				return true
+			} else {
+				log.Error(ctx, "principal", *token, "probably_prime", false)
+				return false
 			}
 		}
 		return false
 	}
 
-	authz := func(auth.Principal, []auth.Subject) bool {
+	// An example authz function that requires (any) auth.Principal
+	// and allows only HTTP GET represented as an auth.Subject
+	authz := func(subjects auth.Subject) bool {
+		if subjects.PrincipalToken() == nil {
+			return false
+		}
+		if subjects == nil {
+			return true
+		}
+		for _, s := range subjects.SubjectTokens() {
+			if s != nil {
+				if token, ok := s.(*string); ok {
+					log.Debug(ctx, "subject", token)
+					if *token == "GET" {
+						return true
+					}
+				}
+			}
+		}
 		return false
 	}
 
 	authenticator := auth.NewAuthenticator(authn, authz)
 
 	Authenticated := authenticator.Authenticated()
+	Authorized := authenticator.Authorized()
 
 	router.Handle(fmt.Sprintf("/principal/{%s}", consts.RequestPrincipalID),
 		kithttp.NewServer(
 			ctx,
-			Authenticated(endpoint.Run),
+			Authorized(
+				Authenticated(endpoint.Run)),
 			decodeRequest,
 			encodeResponse,
-		)).Methods("GET")
+		)).Methods("GET", "POST")
 	return router
 }

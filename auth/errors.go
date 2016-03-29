@@ -1,12 +1,5 @@
 package auth
 
-import "github.com/go-kit/kit/endpoint"
-
-type Authenticator interface {
-	Authenticated() endpoint.Middleware
-	//Authorized() endpoint.Middleware
-}
-
 type UnknownPrincipal struct{}
 
 func (UnknownPrincipal) Error() string {
@@ -17,4 +10,16 @@ type Unauthenticated struct{}
 
 func (Unauthenticated) Error() string {
 	return "Unauthenticated"
+}
+
+type UnknownSubject struct{}
+
+func (UnknownSubject) Error() string {
+	return "Unknown subject"
+}
+
+type Unauthorized struct{}
+
+func (Unauthorized) Error() string {
+	return "Unauthorized"
 }
