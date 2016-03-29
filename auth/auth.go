@@ -1,25 +1,13 @@
 package auth
 
-type UnknownPrincipal struct{}
-
-func (UnknownPrincipal) Error() string {
-	return "Unknown principal"
-}
-
-type Unauthenticated struct{}
-
-func (Unauthenticated) Error() string {
-	return "Unauthenticated"
-}
-
 type Principal interface {
-	PrincipalToken() *string
+	PrincipalToken() interface{}
 }
 
 type Subject interface {
-	SubjectToken() *string
+	SubjectToken() interface{}
 }
 
 type AuthNFunc func(p Principal) bool
 
-type AuthZFunc func(p Principal, s []Subject) []Subject
+type AuthZFunc func(p Principal, s []Subject) bool

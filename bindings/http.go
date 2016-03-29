@@ -16,7 +16,6 @@ import (
 	"github.com/jmc-audio/kitauth/auth"
 	"github.com/jmc-audio/kitauth/consts"
 	"github.com/jmc-audio/kitauth/log"
-	"github.com/jmc-audio/kitauth/middleware"
 
 	"github.com/gorilla/handlers"
 
@@ -35,7 +34,7 @@ type Response struct {
 	Status string
 }
 
-func (r *Request) PrincipalToken() *string {
+func (r *Request) PrincipalToken() interface{} {
 	if id, ok := r.params[consts.RequestPrincipalID]; ok {
 		return &id
 	}
@@ -94,11 +93,29 @@ func StartHTTPListener(root context.Context) {
 func createRouter(ctx context.Context, endpoint Servicer) *mux.Router {
 	router := mux.NewRouter()
 
-	Authenticated := middleware.NewAuthenticator(
-		func(p auth.Principal) bool { return p != nil && *p.PrincipalToken() == "1" },
-		func(auth.Principal, []auth.Subject) []auth.Subject {
-			return []auth.Subject{}
-		}).Authenticated()
+	authn := func(p auth.Principal) bool {
+		if p == nil {
+			return false
+		}
+		if p.PrincipalToken() == nil {
+			return false
+		}
+		if token, ok := p.PrincipalToken().(*string); ok {
+			log.Debug(ctx, consts.RequestPrincipalID, token)
+			if *token == "1" {
+				return true
+			}
+		}
+		return false
+	}
+
+	authz := func(auth.Principal, []auth.Subject) bool {
+		return false
+	}
+
+	authenticator := auth.NewAuthenticator(authn, authz)
+
+	Authenticated := authenticator.Authenticated()
 
 	router.Handle(fmt.Sprintf("/principal/{%s}", consts.RequestPrincipalID),
 		kithttp.NewServer(
