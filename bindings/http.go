@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sync"
-	"time"
 
 	"golang.org/x/net/context"
 
@@ -66,7 +64,7 @@ func NewEndpoint(ctx context.Context) Servicer {
 }
 
 func (h *Endpoint) Run(ctx context.Context, i interface{}) (interface{}, error) {
-	log.Debug(ctx, "ctx", spew.Sdump(ctx))
+	log.Debug(ctx, "ctx", spew.Sdump(ctx), "i", spew.Sdump(i))
 	return &Response{"OK"}, nil
 }
 
@@ -76,14 +74,6 @@ func StartHTTPListener(root context.Context) {
 		defer cancel()
 
 		errc := ctx.Value(consts.ContextErrorChannel).(chan error)
-
-		sessions := make(map[string]context.Context)
-		mtx := &sync.Mutex{}
-
-		ctx = context.WithValue(ctx, "sessions", &sessions)
-		ctx = context.WithValue(ctx, "session.mtx", mtx)
-		ctx = context.WithValue(ctx, "session.ttl", 5*time.Second)
-		ctx = context.WithValue(ctx, "session.refresh", true)
 
 		router := createRouter(ctx, NewEndpoint(ctx))
 		errc <- http.ListenAndServe(":6502", handlers.CombinedLoggingHandler(os.Stderr, router))
