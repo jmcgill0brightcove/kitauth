@@ -1,0 +1,39 @@
+package: kitfilter
+import:
+- package: github.com/gorilla/handlers
+  version: d0f261246491e3a8613039e90764460448dc05f5
+- package: github.com/gorilla/context
+  version: 215affda49addc4c8ef7e2534915df2c8c35c6cd
+- package: github.com/gorilla/mux
+  version: 9cb89f07ca03c6a28d1e237ba033bc6a29422fd6
+- package: github.com/pborman/uuid
+  version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
+- package: github.com/stretchr/objx
+  version: 1a9d0bb9f541897e62256577b352fdbc1fb4fd94
+- package: github.com/stretchr/testify
+  version: c478a808a1b37e10c82f71a2172728f8742bad51
+  subpackages:
+  - assert
+  - mock
+  - require
+  - suite
+- package: github.com/vaughan0/go-ini
+  version: a98ad7ee00ec53921f08832bc06ecf7fd600e6a1
+- package: github.com/go-kit/kit
+  subpackages:
+  - log
+  - log/levels
+  - metrics
+  - metrics/statsd
+  - transport
+  - transport/http
+  - endpoint
+  - metrics/dogstatsd
+  - ratelimit
+- package: golang.org/x/net
+  subpackages:
+  - context
+- package: github.com/davecgh/go-spew
+  subpackages:
+  - spew
+
